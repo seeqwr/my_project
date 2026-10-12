@@ -1,0 +1,34 @@
+states = ["A", "B", "C", "D", "E", "S", "F", "H", "I"]
+actions = ["UP", "DOWN", "LEFT", "RIGHT"]
+gamma = 0.9
+theta = 0.001
+
+V = {s: 0.0 for s in states}
+
+def transitions(s, a):
+
+    if s == "F" and a == "RIGHT":
+        return [(0.8, "H", -0.1), (0.1, "S", -0.1), (0.1, "F", -0.1)]
+    if s == "C" and a == "RIGHT":
+        return [(0.8, "G", 10.0), (0.1, "C", -0.1), (0.1, "E", -0.1)]
+    if s == "E" and a == "RIGHT":
+        return [(0.8, "X", -10.0), (0.1, "C", -0.1), (0.1, "H", -0.1)]
+    
+    return [(0.8, s, -0.1), (0.1, s, -0.1), (0.1, s, -0.1)]
+
+while True:
+    delta = 0
+    new_V = V.copy()
+    for s in states:
+        q_values = []
+        for a in actions:
+            q = 0
+            for prob, next_state, reward in transitions(s, a):
+                q += prob * (reward + gamma * V.get(next_state, 0))
+            q_values.append(q)
+        new_V[s] = max(q_values)
+        delta = max(delta, abs(new_V[s] - V[s]))
+    V = new_V
+    if delta < theta:
+        break
+print(V)
