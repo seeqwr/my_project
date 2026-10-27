@@ -1,0 +1,61 @@
+"""3-тапсырма: Байес қорытындылауы, сезімталдық талдауы және HMM сүзгісі."""
+
+P_ALARM_H, P_ALARM_S = 0.90, 0.10
+P_NORMAL_H, P_NORMAL_S = 0.10, 0.90
+STAY_H, STAY_S = 0.80, 0.90
+
+
+def likelihood(obs):
+    """Бақылау ықтималдықтары: (P(obs|H), P(obs|S))."""
+    return (P_ALARM_H, P_ALARM_S) if obs == "ALARM" else (P_NORMAL_H, P_NORMAL_S)
+
+
+def bayes(prior_h, obs):
+    """P(H|obs) және P(obs) қайтарады."""
+    lh, ls = likelihood(obs)
+    evidence = lh * prior_h + ls * (1 - prior_h)
+    return lh * prior_h / evidence, evidence
+
+
+def hmm_filter(prior_h, observations):
+    """Алға қарай сүзгілеу: болжау -> жаңарту -> нормалау."""
+    rows, b = [], prior_h
+    for t, obs in enumerate(observations, start=1):
+        if t == 1:
+            pred_h = b  # t1 үшін алғашқы мән априор ретінде алынады
+        else:
+            pred_h = STAY_H * b + (1 - STAY_S) * (1 - b)
+        pred_s = 1 - pred_h
+        lh, ls = likelihood(obs)
+        un_h, un_s = lh * pred_h, ls * pred_s
+        b = un_h / (un_h + un_s)
+        rows.append((t, obs, pred_h, b, pred_s, 1 - b))
+    return rows
+
+
+if __name__ == "__main__":
+    print("A. Байес")
+    for obs in ("ALARM", "NORMAL"):
+        post, ev = bayes(0.20, obs)
+        print(f"  P(H|{obs}) = {post:.4f}, P({obs}) = {ev:.4f}")
+
+    print("\nD. Сезімталдық (бақылау = ALARM)")
+    for p in (0.05, 0.20, 0.50, 0.80):
+        post, _ = bayes(p, "ALARM")
+        print(f"  P(H)={p:.2f} -> P(H|ALARM)={post:.4f}")
+
+    print("\nC. HMM сүзгілеу")
+    seq = ["ALARM", "NORMAL", "ALARM", "ALARM"]
+    print("  t  obs     pred_H  upd_H   pred_S  upd_S")
+    for t, o, ph, uh, ps, us in hmm_filter(0.20, seq):
+        print(f"  {t}  {o:<7} {ph:.4f}  {uh:.4f}  {ps:.4f}  {us:.4f}")
+
+    print("\nD. HMM эксперименттері")
+    exps = [
+        ("Негізгі тізбек", 0.20, seq),
+        ("Бастапқы P(H)=0.05", 0.05, seq),
+        ("Бастапқы P(H)=0.50", 0.50, seq),
+        ("Тек ALARM x4", 0.20, ["ALARM"] * 4),
+    ]
+    for name, p0, s in exps:
+        print(f"  {name}: {p0:.2f} -> {hmm_filter(p0, s)[-1][3]:.4f}")
